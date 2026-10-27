@@ -23,7 +23,7 @@ USER_AGENT = (
 )
 
 # iPhone 18 Pro Max, US models (same part number for every carrier and unlocked).
-PARTS = {PARTS = {
+PARTS = {
     "MK1F4LL/A": ("256gb", "night sky"),
 }
 
@@ -52,10 +52,9 @@ if CAPACITIES.strip().upper() != "ALL":
     if not PARTS:
         sys.exit(f"CAPACITIES={CAPACITIES!r} matches no models")
 # Each location returns its ~12 nearest stores; 10314 is needed to reach Staten Island.
-LOCATIONS = [l.strip() for l in os.getenv("LOCATIONS", "10001,10314").split(",") if l.strip()]
-# Comma-separated store numbers to watch, or "ALL" for every store returned.
-STORES = os.getenv("STORES", ",".join(NYC_STORES))
-NTFY_TOPIC = os.getenv("NTFY_TOPIC", "")
+LOCATIONS = ["30060"]
+STORES = "ALL"
+NTFY_TOPIC = "iPhoneDuoStock"
 NTFY_SERVER = os.getenv("NTFY_SERVER", "https://ntfy.sh")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
