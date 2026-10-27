@@ -1,1 +1,30 @@
+name: Test iPhone Stock Checker
 
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check Python syntax
+        run: python -m py_compile monitor.py
+
+      - name: Test Apple inventory connection
+        run: |
+          python - <<'PY'
+          import monitor
+          print("Configured products:", monitor.PARTS)
+          try:
+              available, stores = monitor.check()
+              print("Stores found:", sorted(stores))
+              print("Available products:", available)
+          except Exception as exc:
+              print("Inventory check failed:", exc)
+              raise
+          PY
