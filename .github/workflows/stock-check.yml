@@ -3,8 +3,6 @@ name: iPhone Duo Stock Monitor
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '2/5 * * * *'
 
 permissions:
   contents: read
@@ -50,6 +48,7 @@ jobs:
           import monitor
 
           TARGET = "MK1F4LL/A"
+
           STORES = {
               "R591": "Cumberland Mall",
               "R184": "Perimeter",
