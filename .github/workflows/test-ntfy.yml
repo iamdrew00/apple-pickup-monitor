@@ -1,0 +1,38 @@
+name: Test iPhone Duo Notification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-notification:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send sample notification to ntfy
+        env:
+          NTFY_TOPIC: iPhoneDuoStock
+        run: |
+          printf '%s\n' \
+            'TEST ONLY - NOT REAL INVENTORY' \
+            '' \
+            'iPhone Duo - Night Sky - 256GB' \
+            'Apple Store: Cumberland Mall' \
+            'Pickup: AVAILABLE (SIMULATED)' \
+            'AT&T eligibility: UNVERIFIED' \
+            '' \
+            'This is a test of your stock alerts.' \
+            'No actual availability was detected.' \
+            | curl --fail-with-body -sS \
+                --retry 2 \
+                -X POST \
+                -H "Title: TEST - iPhone Duo Stock Alert" \
+                -H "Priority: high" \
+                -H "Tags: test_tube,iphone" \
+                -H "Click: https://www.apple.com/shop/buy-iphone" \
+                --data-binary @- \
+                "https://ntfy.sh/${NTFY_TOPIC}"
+
+          echo "Test notification sent successfully."
