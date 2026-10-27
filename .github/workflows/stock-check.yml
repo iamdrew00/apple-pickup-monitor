@@ -18,16 +18,26 @@ jobs:
       - name: Check Python syntax
         run: python -m py_compile monitor.py
 
-      - name: Test Apple inventory connection
+      - name: Verify Apple pickup response
         run: |
           python - <<'PY'
           import monitor
-          print("Configured products:", monitor.PARTS)
-          try:
-              available, stores = monitor.check()
-              print("Stores found:", sorted(stores))
-              print("Available products:", available)
-          except Exception as exc:
-              print("Inventory check failed:", exc)
-              raise
+
+          part = "MK1F4LL/A"
+          stores = monitor.fetch_location("30060")
+          print("Stores returned:", len(stores))
+
+          recognized = 0
+          for store in stores:
+              number = store.get("storeNumber")
+              name = store.get("storeName")
+              info = store.get("partsAvailability", {}).get(part)
+              status = info.get("pickupDisplay", "unknown") if info else "unknown"
+              if info:
+                  recognized += 1
+              print(f"{number} | {name} | {status}")
+
+          print("Stores recognizing product:", recognized)
+          if recognized == 0:
+              raise RuntimeError("Product not recognized in pickup response")
           PY
