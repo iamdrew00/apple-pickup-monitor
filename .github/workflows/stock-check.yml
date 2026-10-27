@@ -1,3 +1,4 @@
+
 name: iPhone Duo Stock Monitor
 
 on:
@@ -29,13 +30,27 @@ jobs:
       - name: Validate monitor
         run: python -m py_compile monitor.py
 
-      - name: Verify pickup and carrier data
+      - name: Restore previous stock state
+        uses: actions/cache/restore@v4
+        with:
+          path: .stock-state.json
+          key: stock-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            stock-state-
+
+      - name: Check inventory and send alerts
+        env:
+          NTFY_TOPIC: iPhoneDuoStock
         run: |
           python - <<'PY'
+          import json
+          import os
+          import urllib.request
+          from pathlib import Path
           import monitor
 
-          target = "MK1F4LL/A"
-          allowed = {
+          TARGET = "MK1F4LL/A"
+          STORES = {
               "R591": "Cumberland Mall",
               "R184": "Perimeter",
               "R006": "Lenox Square",
@@ -43,41 +58,84 @@ jobs:
               "R259": "Mall of Georgia",
           }
 
-          stores = monitor.fetch_location("30060")
+          BUY_URL = (
+              "https://www.apple.com/shop/buy-iphone/"
+              "iphone-duo/7.6-inch-display-256gb-night-sky-att"
+          )
 
-          checked = set()
-          for store in stores:
-              number = store.get("storeNumber")
-              if number not in allowed:
-                  continue
+          STATE = Path(".stock-state.json")
+          previous = set()
 
-              checked.add(number)
-              info = store.get(
-                  "partsAvailability", {}
-              ).get(target, {})
+          if STATE.exists():
+              previous = set(json.loads(
+                  STATE.read_text()
+              ).get("available", []))
 
-              print("STORE:", allowed[number])
-              print("PRODUCT:", target)
-              print(
-                  "PICKUP:",
-                  info.get("pickupDisplay", "unknown")
-              )
-              print(
-                  "PRODUCT FIELDS:",
-                  sorted(info.keys())
+          available, seen = monitor.check()
+
+          if not set(STORES).issubset(seen):
+              raise RuntimeError(
+                  "Not all five Apple Stores were checked"
               )
 
-              carrier_fields = {
-                  k: v for k, v in info.items()
-                  if any(word in k.lower() for word in (
-                      "carrier", "activation", "network"
-                  ))
-                  and isinstance(v, (str, bool, int))
-              }
+          current = {
+              store for (store, part) in available
+              if store in STORES and part == TARGET
+          }
 
-              print("CARRIER DATA:", carrier_fields)
-              print("---")
+          print("Stores checked:", sorted(seen))
+          print("Available now:", sorted(current))
 
-          print("STORES VERIFIED:", sorted(checked))
-          print("ALERTS: Disabled until verified")
+          new_stock = current - previous
+
+          for store in sorted(new_stock):
+              name = STORES[store]
+
+              title = "iPhone Duo pickup stock found!"
+
+              message = (
+                  "iPhone Duo - Night Sky - 256GB\n"
+                  f"Apple Store: {name}\n"
+                  "Apple pickup inventory: AVAILABLE\n"
+                  "AT&T checkout eligibility: UNVERIFIED\n"
+                  "Confirm AT&T and pickup at Apple checkout.\n"
+                  f"Order: {BUY_URL}"
+              )
+
+              req = urllib.request.Request(
+                  "https://ntfy.sh/" +
+                  os.environ["NTFY_TOPIC"],
+                  data=message.encode("utf-8"),
+                  headers={
+                      "Title": title,
+                      "Priority": "high",
+                      "Tags": "iphone",
+                      "Click": BUY_URL,
+                  },
+                  method="POST",
+              )
+
+              with urllib.request.urlopen(
+                  req, timeout=20
+              ) as response:
+                  print(
+                      "Alert sent:",
+                      name,
+                      response.status
+                  )
+
+          STATE.write_text(json.dumps({
+              "available": sorted(current)
+          }))
+
+          if not current:
+              print("No matching stock. No alert sent.")
+          elif not new_stock:
+              print("Stock already reported. No duplicate alert.")
           PY
+
+      - name: Save latest stock state
+        uses: actions/cache/save@v4
+        with:
+          path: .stock-state.json
+          key: stock-state-${{ github.run_id }}-${{ github.run_attempt }}
