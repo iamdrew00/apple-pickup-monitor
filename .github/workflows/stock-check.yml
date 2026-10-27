@@ -29,9 +29,7 @@ jobs:
       - name: Validate monitor
         run: python -m py_compile monitor.py
 
-      - name: Check Apple Store inventory
-        env:
-          NTFY_TOPIC: ""
+      - name: Verify pickup and carrier data
         run: |
           python - <<'PY'
           import monitor
@@ -45,25 +43,41 @@ jobs:
               "R259": "Mall of Georgia",
           }
 
-          available, seen = monitor.check()
+          stores = monitor.fetch_location("30060")
 
-          filtered = {
-              (store, part): name
-              for (store, part), name in available.items()
-              if store in allowed and part == target
-          }
+          checked = set()
+          for store in stores:
+              number = store.get("storeNumber")
+              if number not in allowed:
+                  continue
 
-          print("Product:", target)
-          print("Stores checked:",
-                sorted(set(seen) & set(allowed)))
-          print("Matching availability:", filtered)
+              checked.add(number)
+              info = store.get(
+                  "partsAvailability", {}
+              ).get(target, {})
 
-          for (store, part), name in filtered.items():
-              print("POTENTIAL STOCK:", allowed[store],
-                    "|", part, "|", name)
+              print("STORE:", allowed[number])
+              print("PRODUCT:", target)
+              print(
+                  "PICKUP:",
+                  info.get("pickupDisplay", "unknown")
+              )
+              print(
+                  "PRODUCT FIELDS:",
+                  sorted(info.keys())
+              )
 
-          if not filtered:
-              print("No matching pickup stock reported.")
+              carrier_fields = {
+                  k: v for k, v in info.items()
+                  if any(word in k.lower() for word in (
+                      "carrier", "activation", "network"
+                  ))
+                  and isinstance(v, (str, bool, int))
+              }
 
-          print("Diagnostic only; alerts disabled.")
+              print("CARRIER DATA:", carrier_fields)
+              print("---")
+
+          print("STORES VERIFIED:", sorted(checked))
+          print("ALERTS: Disabled until verified")
           PY
