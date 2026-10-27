@@ -1,28 +1,69 @@
-name: Test iPhone Stock Checker
+name: iPhone Duo Stock Monitor
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
+  schedule:
+    - cron: '2/5 * * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iphone-duo-stock-monitor
+  cancel-in-progress: false
 
 jobs:
-  test:
+  stock-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Download repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Check Python syntax
+      - name: Validate monitor
         run: python -m py_compile monitor.py
 
-      - name: Verify Apple pickup response
+      - name: Check Apple Store inventory
+        env:
+          NTFY_TOPIC: ""
         run: |
           python - <<'PY'
           import monitor
-          available, seen_stores = monitor.check()
-          print("Filtered store IDs:", sorted(seen_stores))
-          print("Matching availability:", available)
+
+          target = "MK1F4LL/A"
+          allowed = {
+              "R591": "Cumberland Mall",
+              "R184": "Perimeter",
+              "R006": "Lenox Square",
+              "R080": "Avalon",
+              "R259": "Mall of Georgia",
+          }
+
+          available, seen = monitor.check()
+
+          filtered = {
+              (store, part): name
+              for (store, part), name in available.items()
+              if store in allowed and part == target
+          }
+
+          print("Product:", target)
+          print("Stores checked:",
+                sorted(set(seen) & set(allowed)))
+          print("Matching availability:", filtered)
+
+          for (store, part), name in filtered.items():
+              print("POTENTIAL STOCK:", allowed[store],
+                    "|", part, "|", name)
+
+          if not filtered:
+              print("No matching pickup stock reported.")
+
+          print("Diagnostic only; alerts disabled.")
           PY
