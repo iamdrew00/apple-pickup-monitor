@@ -91,13 +91,11 @@ def log(msg):
 
 
 def product_url(part):
-    capacity, color = PARTS[part]
-    return f"https://www.apple.com/shop/buy-iphone/iphone-18-pro/6.9-inch-display-{capacity}-{color}-unlocked"
-
+    return "https://www.apple.com/shop/buy-iphone"
 
 def product_name(part):
     capacity, color = PARTS[part]
-    return f"{capacity.upper()} {color.capitalize()}"
+    return f"iPhone Duo {capacity.upper()} {color.title()} AT&T"
 
 
 def fetch_location(location):
