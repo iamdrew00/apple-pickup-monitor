@@ -53,7 +53,7 @@ if CAPACITIES.strip().upper() != "ALL":
         sys.exit(f"CAPACITIES={CAPACITIES!r} matches no models")
 # Each location returns its ~12 nearest stores; 10314 is needed to reach Staten Island.
 LOCATIONS = ["30060"]
-STORES = "ALL"
+STORES = "R591,R184,R006,R080,R259"
 NTFY_TOPIC = "iPhoneDuoStock"
 NTFY_SERVER = os.getenv("NTFY_SERVER", "https://ntfy.sh")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
